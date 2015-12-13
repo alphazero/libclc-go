@@ -1,0 +1,7 @@
+temp
+*.6
+*_obj
+*.iml
+*.goide
+.DS_Store
+.*.swp
