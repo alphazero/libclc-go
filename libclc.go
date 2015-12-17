@@ -76,10 +76,16 @@ func (p Container) Uint64Ptr0() *uint64 {
 	return (*uint64)(unsafe.Pointer((*reflect.SliceHeader)(unsafe.Pointer(&p)).Data))
 }
 
-// typically used to get container record
+// typically used to get container record using byte offset.
 // note that function relies on 0x40 alignment of the Container for correct op.
 func (p Container) Uint64Ptr(xof uint8) *uint64 {
 	return (*uint64)(unsafe.Pointer(((*reflect.SliceHeader)(unsafe.Pointer(&p)).Data) | uintptr(xof)))
+}
+
+// Returns pointer to the r-th (data) record.
+// Arg 'r' in range (0, 6) inclusive (but *not* checked.)
+func (p Container) RecordPtr(r uint8) *uint64 {
+	return (*uint64)(unsafe.Pointer(((*reflect.SliceHeader)(unsafe.Pointer(&p)).Data) | uintptr((r+1)<<3)))
 }
 
 /* ------------------------------------------------------------------------- */
