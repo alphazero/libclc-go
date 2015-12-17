@@ -42,7 +42,6 @@ import (
 func Reset(u libclc.Container) {
 	for b := uint8(0); b < 7; b++ {
 		*(*byte)(unsafe.Pointer(((*reflect.SliceHeader)(unsafe.Pointer(&u)).Data) | uintptr(b+1))) = b
-		//		*u.BytePtr(b + 1) = b	// bench shows these funcs are not inlined.
 	}
 	return
 }
@@ -55,7 +54,6 @@ func Init(u libclc.Container) {
 	*u.BytePtr0() = 0
 	for r := uint8(0); r < 7; r++ {
 		*(*uint64)(unsafe.Pointer(((*reflect.SliceHeader)(unsafe.Pointer(&u)).Data) | uintptr((r+1)<<3))) = 0
-		//		*u.RecordPtr(r) = 0
 	}
 	return
 }
@@ -65,16 +63,16 @@ func Init(u libclc.Container) {
 // Returns unit content length in range (0, 7) inclusive.
 // See general package notes regarding argument asserts.
 func Len(u libclc.Container) uint8 {
-	return *u.BytePtr0() & libclc.M_clen
+	return *(*byte)(unsafe.Pointer(((*reflect.SliceHeader)(unsafe.Pointer(&u)).Data))) & libclc.M_clen
 }
 
 // Sets the unit length, with arg in range (0, 7) inclusive.
 // Returns unit content length in range (0, 7) inclusive.
 // See general package notes regarding argument asserts.
 func SetLen(u libclc.Container, length uint8) uint8 {
-	*u.BytePtr0() &= libclc.M_clen_inv
-	*u.BytePtr0() |= length
-	return *u.BytePtr0()
+	p := (*byte)(unsafe.Pointer(((*reflect.SliceHeader)(unsafe.Pointer(&u)).Data)))
+	*p = (*p & libclc.M_clen_inv) | length
+	return *p
 }
 
 // non-exclusive put, adds rec to the next available slot per

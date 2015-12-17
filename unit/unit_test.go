@@ -33,13 +33,6 @@ func newInitClc() libclc.Container {
 	return c
 }
 
-func BenchmarkInit(b *testing.B) {
-	c := newInitClc()
-	for n := 0; n < b.N; n++ {
-		unit.Init(c)
-	}
-}
-
 func TestLen(t *testing.T) {
 
 	c := newInitClc()
@@ -76,5 +69,28 @@ func TestLen(t *testing.T) {
 	have = unit.Len(c)
 	if have != expect {
 		t.Fatalf("unit.Len() (4) - expect:%d have:%d", expect, have)
+	}
+}
+
+/// benchmarks ////////////////////////////////////////////////////////////////
+
+func BenchmarkInit(b *testing.B) {
+	c := newInitClc()
+	for n := 0; n < b.N; n++ {
+		unit.Init(c)
+	}
+}
+
+func BenchmarkLen(b *testing.B) {
+	c := newInitClc()
+	for n := 0; n < b.N; n++ {
+		unit.Len(c)
+	}
+}
+
+func BenchmarkSetLen(b *testing.B) {
+	c := newInitClc()
+	for n := 0; n < b.N; n++ {
+		unit.SetLen(c, 0)
 	}
 }
