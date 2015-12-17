@@ -52,7 +52,10 @@ func Using(b []byte) Container {
 /* ------------------------------------------------------------------------- */
 /* convenience pointer ops --- */
 
-// In a perfect world these will all be inlined by the compiler
+// In a perfect world these will all be inlined by the compiler and we'd use
+// these but Go test benchmarks show significant (a few nsecs) costs so
+// minimally use these function bodies for copy and paste where required.
+//
 // NOTE: all functions of type Unit assume verified pointer mapped via the
 // libclc.Container type cast method.
 

@@ -32,6 +32,14 @@ func newInitClc() libclc.Container {
 	unit.Init(c)
 	return c
 }
+
+func BenchmarkInit(b *testing.B) {
+	c := newInitClc()
+	for n := 0; n < b.N; n++ {
+		unit.Init(c)
+	}
+}
+
 func TestLen(t *testing.T) {
 
 	c := newInitClc()

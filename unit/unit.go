@@ -32,6 +32,8 @@ import (
 	"io"
 	"libclc"
 	"os"
+	"reflect"
+	"unsafe"
 )
 
 // @REF-CHECK
@@ -39,7 +41,8 @@ import (
 // Does NOT modify c-meta.
 func Reset(u libclc.Container) {
 	for b := uint8(0); b < 7; b++ {
-		*u.BytePtr(b + 1) = b
+		*(*byte)(unsafe.Pointer(((*reflect.SliceHeader)(unsafe.Pointer(&u)).Data) | uintptr(b+1))) = b
+		//		*u.BytePtr(b + 1) = b	// bench shows these funcs are not inlined.
 	}
 	return
 }
@@ -51,7 +54,8 @@ func Init(u libclc.Container) {
 	Reset(u)
 	*u.BytePtr0() = 0
 	for r := uint8(0); r < 7; r++ {
-		*u.RecordPtr(r) = 0
+		*(*uint64)(unsafe.Pointer(((*reflect.SliceHeader)(unsafe.Pointer(&u)).Data) | uintptr((r+1)<<3))) = 0
+		//		*u.RecordPtr(r) = 0
 	}
 	return
 }
