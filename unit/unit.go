@@ -36,12 +36,15 @@ import (
 	"unsafe"
 )
 
+type _ptr unsafe.Pointer
+type _hdr *reflect.SliceHeader
+
 // @REF-CHECK
 // Resets the container iteration order.
 // Does NOT modify c-meta.
 func Reset(u libclc.Container) {
 	for b := uint8(0); b < 7; b++ {
-		*(*byte)(unsafe.Pointer(((*reflect.SliceHeader)(unsafe.Pointer(&u)).Data) | uintptr(b+1))) = b
+		*(*byte)(_ptr(((_hdr)(_ptr(&u)).Data) | uintptr(b+1))) = b
 	}
 	return
 }
@@ -53,7 +56,7 @@ func Init(u libclc.Container) {
 	Reset(u)
 	*u.BytePtr0() = 0
 	for r := uint8(0); r < 7; r++ {
-		*(*uint64)(unsafe.Pointer(((*reflect.SliceHeader)(unsafe.Pointer(&u)).Data) | uintptr((r+1)<<3))) = 0
+		*(*uint64)(_ptr(((_hdr)(_ptr(&u)).Data) | uintptr((r+1)<<3))) = 0
 	}
 	return
 }
@@ -63,15 +66,15 @@ func Init(u libclc.Container) {
 // Returns unit content length in range (0, 7) inclusive.
 // See general package notes regarding argument asserts.
 func Len(u libclc.Container) uint8 {
-	return *(*byte)(unsafe.Pointer(((*reflect.SliceHeader)(unsafe.Pointer(&u)).Data))) & libclc.M_clen
+	return *(*byte)(_ptr(((_hdr)(_ptr(&u)).Data))) & libclc.M_clen
 }
 
 // Sets the unit length, with arg in range (0, 7) inclusive.
 // Returns unit content length in range (0, 7) inclusive.
 // See general package notes regarding argument asserts.
 func SetLen(u libclc.Container, length uint8) uint8 {
-	p := (*byte)(unsafe.Pointer(((*reflect.SliceHeader)(unsafe.Pointer(&u)).Data)))
-	*p = (*p & libclc.M_clen_inv) | length
+	p := (*byte)(_ptr(((_hdr)(_ptr(&u)).Data)))
+	*p = (*p & libclc.M_clen_inv) | (length & libclc.M_clen)
 	return *p
 }
 

@@ -20,17 +20,90 @@
 package unit_test
 
 import (
+	"fmt"
 	"libclc"
 	"libclc/unit"
+	"os"
+	//	"reflect"
 	"testing"
+	//	"unsafe"
 )
+
+func _temp() { fmt.Println() }
 
 func newInitClc() libclc.Container {
 	var b = make([]byte, 4096)
-	var c = libclc.Using(b)
+	stat, c := libclc.Using(b)
+	if stat.IsError() {
+		panic("TEST-BUG - libclc.Using")
+	}
 
 	unit.Init(c)
 	return c
+}
+
+func TestUnit(t *testing.T) {
+	var b = newInitClc()
+	fmt.Printf("0x%0x\n", &b[0])
+	stat, c := libclc.Using(b)
+	if stat.IsError() {
+		t.Fatalf("TEST-BUG - libclc.Using - stat:%s", stat)
+	}
+	var u = c.Unit(1)
+	fmt.Printf("0x%0x\n", u)
+	/*
+		_b := make([]byte, 4096)
+		c := libclc.Using(_b)
+		c3 := unit.Container(c, 3)
+		fmt.Printf("%p %p\n", c, c3)
+		unit.Init(c3)
+		unit.Dump(c3)
+	*/
+}
+
+func TestInit(t *testing.T) {
+
+	_b := make([]byte, 4096)
+	for i := 0; i < 4096; i++ {
+		_b[i] = 0xA
+	}
+	stat, c := libclc.Using(_b)
+	if stat.IsError() {
+		t.Fatalf("TEST-BUG - libclc.Using - stat:%s", stat)
+	}
+
+	unit.Init(c)
+
+	// verify expectations
+	// test c-meta
+	// len: 0, default record order: 0-6
+	var b = []byte(c)
+
+	// len +0
+	expect := byte(0)
+	have := b[0]
+	if have != expect {
+		t.Fatalf("unit.Init() - len - expect:%d have:%d", expect, have)
+	}
+	// init r-meta values are in (0..6) inclusive. In order.
+	for xof := 1; xof < 8; xof++ {
+		expect = byte(xof - 1)
+		have = b[xof]
+		if have != expect {
+			unit.DumpTo(c, os.Stderr)
+			t.Fatalf("unit.Init() - r-meta[%d] - expect:%d have:%d", xof, expect, have)
+		}
+	}
+
+	// All records must be zero-value
+	for xof := uint8(0); xof < 7; xof++ {
+		expect := uint64(0)
+		have := *c.RecordPtr(xof)
+		if have != expect {
+			unit.DumpTo(c, os.Stderr)
+			t.Fatalf("unit.Init() - r[%d] - expect:%016x have:%016x", xof, expect, have)
+		}
+	}
 }
 
 func TestLen(t *testing.T) {
@@ -41,6 +114,7 @@ func TestLen(t *testing.T) {
 	have := unit.Len(c)
 	expect := uint8(0)
 	if have != expect {
+		unit.DumpTo(c, os.Stderr)
 		t.Fatalf("unit.Len() - expect:%d have:%d", expect, have)
 	}
 
@@ -48,11 +122,13 @@ func TestLen(t *testing.T) {
 	have = unit.SetLen(c, 3)
 	expect = 3
 	if have != expect {
+		unit.DumpTo(c, os.Stderr)
 		t.Fatalf("unit.SetLen() - expect:%d have:%d", expect, have)
 	}
 
 	have = unit.Len(c)
 	if have != expect {
+		unit.DumpTo(c, os.Stderr)
 		t.Fatalf("unit.Len() (2) - expect:%d have:%d", expect, have)
 	}
 
@@ -60,6 +136,7 @@ func TestLen(t *testing.T) {
 	unit.Reset(c)
 	have = unit.Len(c)
 	if have != expect {
+		unit.DumpTo(c, os.Stderr)
 		t.Fatalf("unit.Len() (3) - expect:%d have:%d", expect, have)
 	}
 
@@ -68,6 +145,7 @@ func TestLen(t *testing.T) {
 	unit.Init(c)
 	have = unit.Len(c)
 	if have != expect {
+		unit.DumpTo(c, os.Stderr)
 		t.Fatalf("unit.Len() (4) - expect:%d have:%d", expect, have)
 	}
 }

@@ -35,22 +35,37 @@ import (
 // permit selective access (via e.g. "protected" or "friend").
 type Container []byte
 
+const (
+	SizeCacheLine = 0x40
+)
+
 // Verfies the buffer in terms of alignment, length, etc, and
 // recasts as Container. For integrity checks, we rely on this function
 // providing the 'container' value object, so refrain from directly
 // casting []byte objects to libclc.Contaienr!
 //
 // panics.
-func Using(b []byte) Container {
-	// TODO asserts here once
-	// TODO check if nil
-	// TODO check if not aligned 0x40
+func Using(b []byte) (Stat, Container) {
+	if b == nil {
+		return ErrPointer, nil
+	}
+	if len(b) < SizeCacheLine {
+		return ErrArg, nil
+	}
+	if _hdr(_ptr(&b)).Data%SizeCacheLine != 0 {
+		return ErrAlignment, nil
+	}
 
-	return Container(b)
+	return Ok, Container(b)
 }
+
+type unit uintptr
 
 /* ------------------------------------------------------------------------- */
 /* convenience pointer ops --- */
+
+type _ptr unsafe.Pointer       // easier on the eye, one hopes
+type _hdr *reflect.SliceHeader // ^^^
 
 // In a perfect world these will all be inlined by the compiler and we'd use
 // these but Go test benchmarks show significant (a few nsecs) costs so
@@ -60,35 +75,45 @@ func Using(b []byte) Container {
 // libclc.Container type cast method.
 
 func (p Container) Pointer() uintptr {
-	return (*reflect.SliceHeader)(unsafe.Pointer(&p)).Data
+	return (_hdr)(_ptr(&p)).Data
+	//	return (*reflect.SliceHeader)(unsafe.Pointer(&p)).Data
 }
 
 // typically used to get container cmeta
 func (p Container) BytePtr0() *byte {
-	return (*byte)(unsafe.Pointer((*reflect.SliceHeader)(unsafe.Pointer(&p)).Data))
+	return (*byte)(_ptr((_hdr)(_ptr(&p)).Data))
+	//	return (*byte)(unsafe.Pointer((*reflect.SliceHeader)(unsafe.Pointer(&p)).Data))
 }
 
 // typically used to get container record rmeta
 // note that function relies on 0x40 alignment of the Container for correct op.
 func (p Container) BytePtr(xof uint8) *byte {
-	return (*byte)(unsafe.Pointer(((*reflect.SliceHeader)(unsafe.Pointer(&p)).Data) | uintptr(xof)))
+	return (*byte)(_ptr(((_hdr)(_ptr(&p)).Data) | uintptr(xof)))
+	//	return (*byte)(unsafe.Pointer(((*reflect.SliceHeader)(unsafe.Pointer(&p)).Data) | uintptr(xof)))
 }
 
 // typically used to get container state record R0
 func (p Container) Uint64Ptr0() *uint64 {
-	return (*uint64)(unsafe.Pointer((*reflect.SliceHeader)(unsafe.Pointer(&p)).Data))
+	return (*uint64)(_ptr((_hdr)(_ptr(&p)).Data))
+	//	return (*uint64)(unsafe.Pointer((*reflect.SliceHeader)(unsafe.Pointer(&p)).Data))
 }
 
 // typically used to get container record using byte offset.
 // note that function relies on 0x40 alignment of the Container for correct op.
 func (p Container) Uint64Ptr(xof uint8) *uint64 {
-	return (*uint64)(unsafe.Pointer(((*reflect.SliceHeader)(unsafe.Pointer(&p)).Data) | uintptr(xof)))
+	return (*uint64)(_ptr(((_hdr)(_ptr(&p)).Data) | uintptr(xof)))
+	//	return (*uint64)(unsafe.Pointer(((*reflect.SliceHeader)(unsafe.Pointer(&p)).Data) | uintptr(xof)))
 }
 
 // Returns pointer to the r-th (data) record.
 // Arg 'r' in range (0, 6) inclusive (but *not* checked.)
 func (p Container) RecordPtr(r uint8) *uint64 {
-	return (*uint64)(unsafe.Pointer(((*reflect.SliceHeader)(unsafe.Pointer(&p)).Data) | uintptr((r+1)<<3)))
+	return (*uint64)(_ptr(((_hdr)(_ptr(&p)).Data) | uintptr((r+1)<<3)))
+	//	return (*uint64)(unsafe.Pointer(((*reflect.SliceHeader)(unsafe.Pointer(&p)).Data) | uintptr((r+1)<<3)))
+}
+
+func (c Container) Unit(n uint) unit {
+	return unit((_hdr(_ptr(&c))).Data + uintptr(n<<6))
 }
 
 /* ------------------------------------------------------------------------- */
@@ -136,7 +161,7 @@ func (s Stat) IsError() bool { return s < 0 }
 
 const (
 	/* non-error stats */
-	ok        = Stat(0)
+	Ok        = Stat(0)
 	Full      = Stat(1)
 	Empty     = Stat(2)
 	Removed   = Stat(3)
@@ -154,7 +179,42 @@ const (
 	ErrNotImpl   = Stat(-255)
 )
 
-// TODO: debug String() methd for Stat type.
+func (s Stat) String() string {
+	switch s {
+	case Ok:
+		return "Ok"
+	case Full:
+		return "Full"
+	case Empty:
+		return "Empty"
+	case Removed:
+		return "Removed"
+	case NotFound:
+		return "NotFound"
+	case Duplicate:
+		return "Duplicate"
+		/* -- error stats */
+	case ErrState:
+		return "ErrState"
+	case ErrAlignment:
+		return "ErrAlignment"
+	case ErrPointer:
+		return "ErrPointer"
+	case ErrArg:
+		return "ErrArg"
+	case ErrSelector:
+		return "ErrSelector"
+	case ErrIndex:
+		return "ErrIndex"
+	case ErrRecord:
+		return "ErrRecord"
+	case ErrNotImpl:
+		return "ErrNotImpl"
+	default:
+		return "?unknown-stat?"
+	}
+	panic("unreachable")
+}
 
 /* ------------------------------------------------------------------------- */
 /* systolic shift ops -------- */
